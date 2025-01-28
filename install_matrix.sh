@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Variables
-GIT_REPO_URL="https://github.com/yourusername/matrix-login.git"
+GIT_REPO_URL="https://github.com/Scout-lander/unraidMatrix/"
 MATRIX_LOGIN_FILE="matrix_login.php"
 LOGIN_FILE_PATH="/usr/local/emhttp/webGui/include/.login.php"
 BACKUP_FILE_PATH="/usr/local/emhttp/webGui/include/.login_backup.php"
