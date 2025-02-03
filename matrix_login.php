@@ -574,10 +574,19 @@ $theme_dark = in_array($display['theme'], ['black', 'gray']);
             font-size: 16px; /* This prevents the mobile browser from zooming in on the input-field. */
         }
         #login {
-            margin: 0;
-            border-radius: 0;
-            width: 100%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8); /* Slight transparency */
+            border: 1px solid #00ff41;
+            border-radius: 10px;
+            box-shadow: 0 0 15px #00ff41;
+            padding: 2rem;
+            width: 400px;
+            z-index: 10; /* Ensure it's above the canvas */
         }
+
         #login .logo {
             border-radius: 0;
         }
@@ -590,30 +599,52 @@ $theme_dark = in_array($display['theme'], ['black', 'gray']);
     <link type="image/png" rel="shortcut icon" href="/webGui/images/<?=$var['mdColor']?>.png">
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const matrix = document.querySelector('.matrix');
-            const columns = Math.floor(window.innerWidth / 20);
+        const canvas = document.createElement('canvas');
+        document.body.prepend(canvas); // Ensures canvas is in the background
 
-            const matrixChars = '01ﾊﾐﾋﾗﾘﾓﾑﾍﾎｱｲｳｴｵ';
+        canvas.style.position = 'fixed';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.zIndex = '-1'; // Keeps it behind everything
 
-            for (let i = 0; i < columns; i++) {
-                const span = document.createElement('span');
-                span.style.left = `${i * 20}px`;
-                span.style.animationDuration = `${Math.random() * 3 + 2}s`;
-                span.style.animationDelay = `${Math.random() * 2}s`;
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const ctx = canvas.getContext('2d');
 
-                span.innerHTML = Array.from({ length: 30 }, () => matrixChars[Math.floor(Math.random() * matrixChars.length)]).join('<br>');
-                matrix.appendChild(span);
+        const matrixChars = '01ﾊﾐﾋﾗﾘﾓﾑﾍﾎｱｲｳｴｵ';
+        const fontSize = 18;
+        const columns = Math.floor(canvas.width / fontSize);
+        const drops = Array(columns).fill(0);
+
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#00ff41';
+            ctx.font = `${fontSize}px monospace`;
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = matrixChars[Math.floor(Math.random() * matrixChars.length)];
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
             }
 
-            setInterval(() => {
-                const spans = document.querySelectorAll('.matrix span');
-                spans.forEach(span => {
-                    if (Math.random() > 0.9) {
-                        span.innerHTML = Array.from({ length: 30 }, () => matrixChars[Math.floor(Math.random() * matrixChars.length)]).join('<br>');
-                    }
-                });
-            }, 500);
+            requestAnimationFrame(drawMatrix);
+        }
+
+        drawMatrix();
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            drops.fill(0);
         });
+    });
     </script>
 </head>
 
