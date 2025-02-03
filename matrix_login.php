@@ -578,15 +578,25 @@ $theme_dark = in_array($display['theme'], ['black', 'gray']);
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8); /* Slight transparency */
+            background: rgba(0, 0, 0, 0.9);
             border: 1px solid #00ff41;
             border-radius: 10px;
             box-shadow: 0 0 15px #00ff41;
             padding: 2rem;
             width: 400px;
             z-index: 10; /* Ensure it's above the canvas */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
+        /* Responsive Fix for Smaller Screens */
+        @media (max-width: 500px) {
+            #login {
+                width: 90%;
+                padding: 1.5rem;
+            }
+        }
         #login .logo {
             border-radius: 0;
         }
@@ -594,6 +604,83 @@ $theme_dark = in_array($display['theme'], ['black', 'gray']);
             box-shadow: none;
         }
     }
+    /* === 1. Scanline Effect === */
+    @keyframes scanline {
+        0% { transform: translateY(0); opacity: 0.1; }
+        50% { opacity: 0.2; }
+        100% { transform: translateY(100%); opacity: 0.1; }
+    }
+    .scanlines::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+            rgba(0, 0, 0, 0) 50%, 
+            rgba(0, 0, 0, 0.3) 50%
+        );
+        background-size: 100% 2px; /* Thinner lines */
+        opacity: 0.2;
+        z-index: 100;
+        pointer-events: none;
+        animation: scanline 2s infinite linear;
+    }
+
+    /* === Subtle Screen Flicker === */
+    @keyframes flicker {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.95; }
+    }
+    .flicker {
+        animation: flicker 0.1s infinite;
+    }
+
+    /* === 2. Screen Curvature and Glow === */
+    .crt-effect {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle, rgba(0, 255, 65, 0.05) 20%, rgba(0, 0, 0, 0.8) 50%);
+        pointer-events: none;
+        mix-blend-mode: screen;
+        z-index: 100;
+    }
+    /* Screen Curvature */
+    .curvature {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        transform: scale(1.03);
+        border-radius: 10px;
+        box-shadow: inset 0 0 60px rgba(0, 255, 65, 0.3);
+        z-index: 99;
+        pointer-events: none;
+    }
+
+    /* === 3. Vignette Effect (Dark Corners) === */
+    .vignette::after {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.7) 120%);
+        z-index: 100;
+        pointer-events: none;
+    }
+
+    /* === Optional: Slight Blurriness === */
+    body {
+        filter: blur(0.3px);
+    }
+
     </style>
     <link type="text/css" rel="stylesheet" href="<?autov("/webGui/styles/default-cases.css")?>">
     <link type="image/png" rel="shortcut icon" href="/webGui/images/<?=$var['mdColor']?>.png">
@@ -619,7 +706,7 @@ $theme_dark = in_array($display['theme'], ['black', 'gray']);
         const drops = Array(columns).fill(0);
 
         function drawMatrix() {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)'; // Adjust transparency to prevent ghosting effect
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = '#00ff41';
             ctx.font = `${fontSize}px monospace`;
@@ -636,7 +723,6 @@ $theme_dark = in_array($display['theme'], ['black', 'gray']);
 
             requestAnimationFrame(drawMatrix);
         }
-
         drawMatrix();
 
         window.addEventListener('resize', () => {
@@ -648,7 +734,10 @@ $theme_dark = in_array($display['theme'], ['black', 'gray']);
     </script>
 </head>
 
-<body>
+<body class="scanlines vignette flicker">
+    <div class="crt-effect"></div>
+    <div class="curvature"></div>
+    
     <div class="matrix"></div>
     <section id="login" class="shadow">
         <div class="content">
