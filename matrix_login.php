@@ -254,11 +254,6 @@ $theme_dark = in_array($display['theme'], ['black', 'gray']);
     <meta name="referrer" content="same-origin">
     <title><?=$var['NAME']?>/Login</title>
     <style>
-    /************************
-    /
-    /  Fonts
-    /
-    /************************/
     @font-face{font-family:clear-sans;font-weight:normal;font-style:normal; src:url('/webGui/styles/clear-sans.woff?v=20220513') format('woff')}
     @font-face{font-family:clear-sans;font-weight:bold;font-style:normal; src:url('/webGui/styles/clear-sans-bold.woff?v=20220513') format('woff')}
     @font-face{font-family:clear-sans;font-weight:normal;font-style:italic; src:url('/webGui/styles/clear-sans-italic.woff?v=20220513') format('woff')}
@@ -268,286 +263,185 @@ $theme_dark = in_array($display['theme'], ['black', 'gray']);
     @font-face{font-family:bitstream;font-weight:normal;font-style:italic; src:url('/webGui/styles/bitstream-italic.woff?v=20220513') format('woff')}
     @font-face{font-family:bitstream;font-weight:bold;font-style:italic; src:url('/webGui/styles/bitstream-bold-italic.woff?v=20220513') format('woff')}
 
-    /************************
-    /
-    /  General styling
-    /
-    /************************/
+    *, *::before, *::after { box-sizing: border-box; }
+
     body {
-            background: black;
-            color: #00ff41;
-            font-family: 'Courier New', Courier, monospace;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-        }
-    /* Matrix falling code animation */
-    .matrix {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            z-index: -1;
-        }
-        @keyframes flicker {
-            0%, 80%, 100% { opacity: 1; }
-            85% { opacity: 0.5; }
-        }
-        .matrix span {
-            position: absolute;
-            display: block;
-            font-size: 18px;
-            font-family: monospace;
-            animation: fall linear infinite, flicker 1s infinite;
-            color: #00ff41;
-            background: linear-gradient(to bottom, #00ff41, #004d00);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        @keyframes fall {
-            0% {
-                transform: translateY(-100%);
-                opacity: 0;
-            }
-            10% {
-                opacity: 1;
-            }
-            90% {
-                opacity: 1;
-            }
-            100% {
-                transform: translateY(100%);
-                opacity: 0;
-            }
-        }
-    a {
-        text-transform: uppercase;
+        background: #000;
+        color: #00ff41;
+        font-family: 'Courier New', Courier, monospace;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    /* ── Matrix canvas ── */
+    #matrix-canvas {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    /* ── CRT scanlines — static horizontal lines ── */
+    .scanlines {
+        position: fixed;
+        inset: 0;
+        background: repeating-linear-gradient(
+            to bottom,
+            transparent 0px,
+            transparent 2px,
+            rgba(0, 0, 0, 0.15) 2px,
+            rgba(0, 0, 0, 0.15) 4px
+        );
+        pointer-events: none;
+        z-index: 5;
+    }
+
+    /* ── CRT edge glow ── */
+    .crt-glow {
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(ellipse at center,
+            rgba(0, 255, 65, 0.04) 0%,
+            rgba(0, 0, 0, 0.5) 80%
+        );
+        box-shadow: inset 0 0 80px rgba(0, 255, 65, 0.12);
+        pointer-events: none;
+        z-index: 6;
+    }
+
+    /* ── Vignette ── */
+    .vignette {
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(ellipse at center,
+            transparent 45%,
+            rgba(0, 0, 0, 0.75) 100%
+        );
+        pointer-events: none;
+        z-index: 6;
+    }
+
+    /* ── Login box ── */
+    #login {
+        position: relative;
+        z-index: 10;
+        background: rgba(0, 0, 0, 0.85);
+        border: 1px solid #00ff41;
+        border-radius: 10px;
+        box-shadow: 0 0 24px rgba(0, 255, 65, 0.35), inset 0 0 30px rgba(0, 255, 65, 0.03);
+        padding: 2.5rem 2rem 2rem;
+        width: 360px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    h1 {
+        font-size: 1.8rem;
         font-weight: bold;
-        letter-spacing: 2px;
-        color: #FF8C2F;
-        text-decoration: none;
+        text-align: center;
+        color: #00ff41;
+        text-shadow: 0 0 6px #00ff41, 0 0 18px #00ff41, 0 0 36px #00a328;
+        margin: 0 0 0.25rem;
+        letter-spacing: 0.04em;
     }
-    a:hover {
-        color: #f15a2c;
-    }
-    h1, h2 {
-            text-align: center;
-            margin: 0;
-            padding: 0;
-            color: #00ff41;
-            text-shadow: 0 0 5px #00ff41, 0 0 10px #00ff41;
-        }
 
-        h1 {
-            font-size: 2.5rem;
-            position: relative;
-            color: #00ff41;
-            text-shadow: 0 0 5px #00ff41, 0 0 20px #00ff41, 0 0 40px #00ff41;
-        }
-
-        h2 {
-            font-size: 1rem;
-            margin-top: 10px;
-        }
-
-    .button {
-        color: #ff8c2f;
-        font-family: clear-sans, sans-serif;
-        background: -webkit-gradient(linear,left top,right top,from(#e03237),to(#fd8c3c)) 0 0 no-repeat,-webkit-gradient(linear,left top,right top,from(#e03237),to(#fd8c3c)) 0 100% no-repeat,-webkit-gradient(linear,left bottom,left top,from(#e03237),to(#e03237)) 0 100% no-repeat,-webkit-gradient(linear,left bottom,left top,from(#fd8c3c),to(#fd8c3c)) 100% 100% no-repeat;
-        background: linear-gradient(90deg,#e03237 0,#fd8c3c) 0 0 no-repeat,linear-gradient(90deg,#e03237 0,#fd8c3c) 0 100% no-repeat,linear-gradient(0deg,#e03237 0,#e03237) 0 100% no-repeat,linear-gradient(0deg,#fd8c3c 0,#fd8c3c) 100% 100% no-repeat;
-        background-size: 100% 2px,100% 2px,2px 100%,2px 100%;
-    }
-    .button:hover {
-        color: #fff;
-        background-color: #f15a2c;
-        background: -webkit-gradient(linear,left top,right top,from(#e22828),to(#ff8c2f));
-        background: linear-gradient(90deg,#e22828 0,#ff8c2f);
-        -webkit-box-shadow: none;
-        box-shadow: none;
-        cursor: pointer;
-    }
-    .button--small {
-        font-size: .875rem;
-        font-weight: 600;
-        line-height: 1;
+    h2 {
+        font-size: 0.78rem;
+        font-weight: normal;
+        text-align: center;
+        color: rgba(0, 255, 65, 0.45);
+        margin: 0 0 1.5rem;
+        letter-spacing: 0.16em;
         text-transform: uppercase;
-        letter-spacing: 2px;
+    }
+
+    .form {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+        width: 100%;
+        background: rgba(0, 8, 0, 0.75);
+        color: #00ff41;
+        border: 1px solid rgba(0, 255, 65, 0.35);
+        border-radius: 5px;
+        padding: 0.65rem 0.9rem;
+        margin-bottom: 0.85rem;
+        font-size: 0.95rem;
+        font-family: 'Courier New', monospace;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+        outline: none;
+        border-color: #00ff41;
+        box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+    }
+
+    input[type="text"]::placeholder,
+    input[type="password"]::placeholder {
+        color: rgba(0, 255, 65, 0.28);
+    }
+
+    .button, .button--small {
+        width: 100%;
+        background: transparent;
+        color: #00ff41;
+        border: 1px solid #00ff41;
+        border-radius: 5px;
+        padding: 0.65rem 1rem;
+        font-size: 0.82rem;
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
         text-align: center;
         text-decoration: none;
         display: inline-block;
-        background-color: transparent;
-        border-radius: .125rem;
-        border: 0;
-        -webkit-transition: none;
-        transition: none;
-        padding: .75rem 1.5rem;
-    }
-    [type=email], [type=number], [type=password], [type=search], [type=tel], [type=text], [type=url], textarea {
-        font-family: clear-sans, sans-serif;
-        font-size: .875rem;
-        background-color: #F2F2F2;
-        width: 100%;
-        margin-bottom: 1rem;
-        border: 2px solid #ccc;
-        padding: .75rem 1rem;
-        -webkit-box-sizing: border-box;
-        box-sizing: border-box;
-        border-radius: 0;
-        -webkit-appearance: none;
-    }
-    [type=email]:active, [type=email]:focus, [type=number]:active, [type=number]:focus, [type=password]:active, [type=password]:focus, [type=search]:active, [type=search]:focus, [type=tel]:active, [type=tel]:focus, [type=text]:active, [type=text]:focus, [type=url]:active, [type=url]:focus, textarea:active, textarea:focus {
-        border-color: #ff8c2f;
-        outline: none;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+        margin-top: 0.2rem;
     }
 
-    /************************
-    /
-    /  Login specific styling
-    /
-    /************************/
-    #login {
-        background: rgba(0, 0, 0, 0.8);
-        border: 1px solid #00ff41;
-        border-radius: 10px;
-        box-shadow: 0 0 15px #00ff41;
-        padding: 2rem;
-        width: 400px;
+    .button:hover, .button--small:hover {
+        background: #00ff41;
+        color: #000;
+        box-shadow: 0 0 16px rgba(0, 255, 65, 0.45);
     }
-    #login::after {
-        content: "";
-        clear: both;
-        display: table;
-    }
-    #login .logo {
-        position: relative;
-        overflow: hidden;
-        height: 120px;
-        border-radius: 10px 10px 0 0;
-    }
-    #login .wordmark {
-        z-index: 1;
-        position: relative;
-        padding: 2rem;
-    }
-    #login .wordmark svg {
-        width: 100px;
-    }
-    #login .case {
-        float: right;
-        width: 30%;
-        font-size: 6rem;
+
+    .error {
+        color: #ff4444;
         text-align: center;
+        font-size: 0.82rem;
+        margin-bottom: 0.75rem;
+        text-shadow: 0 0 6px rgba(255, 68, 68, 0.4);
     }
-    #login .case img {
-        max-width: 96px;
-        max-height: 96px;
+
+    a {
+        color: rgba(0, 255, 65, 0.45);
+        text-decoration: none;
+        font-size: 0.75rem;
+        letter-spacing: 0.04em;
+        transition: color 0.2s;
     }
-    #login .error {
-        color: red;
-        margin-top: -20px;
-    }
-    #login .content {
-        padding: 2rem;
-    }
-    #login .form {
-        width: 65%;
-    }
-    .angle:after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 120px;
-        background-color: #f15a2c;
-        background: -webkit-gradient(linear,left top,right top,from(#e22828),to(#ff8c2f));
-        background: linear-gradient(90deg,#e22828 0,#ff8c2f);
-        -webkit-transform-origin: bottom left;
-        transform-origin: bottom left;
-        -webkit-transform: skewY(-6deg);
-        transform: skewY(-6deg);
-        -webkit-transition: -webkit-transform .15s linear;
-        transition: -webkit-transform .15s linear;
-        transition: transform .15s linear;
-        transition: transform .15s linear,-webkit-transform .15s linear;
-    }
-    .shadow {
-        -webkit-box-shadow: 0 2px 8px 0 rgba(0,0,0,.12);
-        box-shadow: 0 2px 8px 0 rgba(0,0,0,.12);
-    }
-    .form {
-            display: flex;
-            flex-direction: column;
-        }
+    a:hover { color: #00ff41; }
 
-        input[type="text"], input[type="password"] {
-            background: black;
-            color: #00ff41;
-            border: 1px solid #00ff41;
-            padding: 10px;
-            margin-bottom: 1rem;
-            border-radius: 5px;
-            font-size: 1rem;
-            box-shadow: 0 0 5px #00ff41;
-        }
+    .js-removeTimeout a { display: block; text-align: center; margin-top: 1.25rem; }
 
-        input[type="text"]:focus, input[type="password"]:focus {
-            outline: none;
-            border-color: #00ff80;
-            box-shadow: 0 0 10px #00ff80;
-        }
-
-        .button {
-            background: black;
-            color: #00ff41;
-            border: 1px solid #00ff41;
-            padding: 10px;
-            font-size: 1rem;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-        }
-
-        .button:hover {
-            background: #00ff41;
-            color: black;
-            box-shadow: 0 0 15px #00ff41;
-        }
-
-        .error {
-            color: red;
-            text-align: center;
-            margin-bottom: 1rem;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 1rem;
-        }
-
-        .footer a {
-            color: #00ff41;
-            text-decoration: none;
-        }
-
-        .footer a:hover {
-            color: #00ff80;
-        }
     .hidden { display: none; }
-    /************************
-    /
-    /  Cases
-    /
-    /************************/
+
     [class^="case-"], [class*=" case-"] {
-        /* use !important to prevent issues with browser extensions that change fonts */
         font-family: 'cases' !important;
         speak: none;
         font-style: normal;
@@ -555,275 +449,151 @@ $theme_dark = in_array($display['theme'], ['black', 'gray']);
         font-variant: normal;
         text-transform: none;
         line-height: 1;
-
-        /* Better Font Rendering =========== */
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }
 
-    /************************
-    /
-    /  Media queries for mobile responsive
-    /
-    /************************/
     @media (max-width: 500px) {
-        body {
-            background: <?=$theme_dark?'#2B2A29':'#fff'?>;
-        }
-        [type=email], [type=number], [type=password], [type=search], [type=tel], [type=text], [type=url], textarea {
-            font-size: 16px; /* This prevents the mobile browser from zooming in on the input-field. */
-        }
-        #login {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            border: 1px solid #00ff41;
-            border-radius: 10px;
-            box-shadow: 0 0 15px #00ff41;
-            padding: 2rem;
-            width: 400px;
-            z-index: 10; /* Ensure it's above the canvas */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        /* Responsive Fix for Smaller Screens */
-        @media (max-width: 500px) {
-            #login {
-                width: 90%;
-                padding: 1.5rem;
-            }
-        }
-        #login .logo {
-            border-radius: 0;
-        }
-        .shadow {
-            box-shadow: none;
-        }
+        #login { width: 90%; padding: 1.75rem 1.25rem; }
+        h1 { font-size: 1.4rem; }
     }
-    /* === 1. Scanline Effect === */
-    @keyframes scanline {
-        0% { transform: translateY(0); opacity: 0.1; }
-        50% { opacity: 0.2; }
-        100% { transform: translateY(100%); opacity: 0.1; }
-    }
-    .scanlines::before {
-        content: "";
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(
-            rgba(0, 0, 0, 0) 50%, 
-            rgba(0, 0, 0, 0.3) 50%
-        );
-        background-size: 100% 2px; /* Thinner lines */
-        opacity: 0.2;
-        z-index: 100;
-        pointer-events: none;
-        animation: scanline 2s infinite linear;
-    }
-
-    /* === Subtle Screen Flicker === */
-    @keyframes flicker {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.95; }
-    }
-    .flicker {
-        animation: flicker 0.1s infinite;
-    }
-
-    /* === 2. Screen Curvature and Glow === */
-    .crt-effect {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: radial-gradient(circle, rgba(0, 255, 65, 0.05) 20%, rgba(0, 0, 0, 0.8) 50%);
-        pointer-events: none;
-        mix-blend-mode: screen;
-        z-index: 100;
-    }
-    /* Screen Curvature */
-    .curvature {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        transform: scale(1.03);
-        border-radius: 10px;
-        box-shadow: inset 0 0 60px rgba(0, 255, 65, 0.3);
-        z-index: 99;
-        pointer-events: none;
-    }
-
-    /* === 3. Vignette Effect (Dark Corners) === */
-    .vignette::after {
-        content: "";
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: radial-gradient(circle, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.7) 120%);
-        z-index: 100;
-        pointer-events: none;
-    }
-
-    /* === Optional: Slight Blurriness === */
-    body {
-        filter: blur(0.3px);
-    }
-
     </style>
     <link type="text/css" rel="stylesheet" href="<?autov("/webGui/styles/default-cases.css")?>">
     <link type="image/png" rel="shortcut icon" href="/webGui/images/<?=$var['mdColor']?>.png">
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-        const canvas = document.createElement('canvas');
-        document.body.prepend(canvas); // Ensures canvas is in the background
-
-        canvas.style.position = 'fixed';
-        canvas.style.top = '0';
-        canvas.style.left = '0';
-        canvas.style.width = '100%';
-        canvas.style.height = '100%';
-        canvas.style.zIndex = '-1'; // Keeps it behind everything
-
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        const ctx = canvas.getContext('2d');
-
-        const matrixChars = '01ﾊﾐﾋﾗﾘﾓﾑﾍﾎｱｲｳｴｵ';
-        const fontSize = 18;
-        const columns = Math.floor(canvas.width / fontSize);
-        const drops = Array(columns).fill(0);
-
-        function drawMatrix() {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)'; // Adjust transparency to prevent ghosting effect
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#00ff41';
-            ctx.font = `${fontSize}px monospace`;
-
-            for (let i = 0; i < drops.length; i++) {
-                const text = matrixChars[Math.floor(Math.random() * matrixChars.length)];
-                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-
-                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-                    drops[i] = 0;
-                }
-                drops[i]++;
-            }
-
-            requestAnimationFrame(drawMatrix);
-        }
-        drawMatrix();
-
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            drops.fill(0);
-        });
-    });
-    </script>
 </head>
 
-<body class="scanlines vignette flicker">
-    <div class="crt-effect"></div>
-    <div class="curvature"></div>
-    
-    <div class="matrix"></div>
-    <section id="login" class="shadow">
-        <div class="content">
-            <h1>
-                <?=htmlspecialchars($var['NAME'])?>
-            </h1>
-            <div></div>
-            <h2>Welcome to the system</h2>
-            <div></div>
-            <div class="form">
-                <form class="js-removeTimeout" action="/login" method="POST">
-                    <? if (($twoFactorRequired && !empty($token)) || !$twoFactorRequired) { ?>
-                        <p>
-                            <input name="username" type="text" placeholder="<?=_('Username')?>" autocapitalize="none" autocomplete="off" spellcheck="false" autofocus required>
-                            <input name="password" type="password" placeholder="<?=_('Password')?>" required>
-                            <? if ($twoFactorRequired && !empty($token)) { ?>
-                            <input name="token" type="hidden" value="<?= $token ?>">
-                            <? } ?>
-                        </p>
-                        <? if ($error) echo "<p class='error'>$error</p>"; ?>
-                        <p>
-                            <button type="submit" class="button button--small"><?=_('Login')?></button>
-                        </p>
-                    <? } else { ?>
-                        <? if ($error) { ?>
-                            <div>
-                                <p class="error" style="padding-top:10px;"><?= $error ?></p>
-                            </div>
-                        <? } else { ?>
-                            <div>
-                                <p class="error" style="padding-top:10px;" title="<?= _('Please access this server via the My Servers Dashboard') ?>"><?= _('No 2FA token detected') ?></p>
-                            </div>
-                        <? } ?>
-                        <div>
-                            <a href="https://forums.unraid.net/my-servers/" class="button button--small" title="<?=_('Go to My Servers Dashboard')?>"><?=_('Go to My Servers Dashboard')?></a>
-                        </div>
-                    <? } ?>
-                    <script type="text/javascript">
-                        document.cookie = "cookietest=1";
-                        cookieEnabled = document.cookie.indexOf("cookietest=")!=-1;
-                        document.cookie = "cookietest=1; expires=Thu, 01-Jan-1970 00:00:01 GMT";
-                        if (!cookieEnabled) {
-                            const errorElement = document.createElement('p');
-                            errorElement.classList.add('error');
-                            errorElement.textContent = "<?=_('Please enable cookies to use the Unraid webGUI')?>";
+<body>
+    <canvas id="matrix-canvas"></canvas>
+    <div class="scanlines"></div>
+    <div class="crt-glow"></div>
+    <div class="vignette"></div>
 
-                            document.body.textContent = '';
-                            document.body.appendChild(errorElement);
-                        }
-                    </script>
-                </form>
+    <section id="login">
+        <h1><?=htmlspecialchars($var['NAME'])?></h1>
+        <h2>Access Terminal</h2>
 
+        <div class="form">
+            <form class="js-removeTimeout" action="/login" method="POST">
                 <? if (($twoFactorRequired && !empty($token)) || !$twoFactorRequired) { ?>
-                    <div class="js-addTimeout hidden">
-                        <p class="error" style="padding-top:10px;"><?=_('Transparent 2FA Token timed out')?></p>
+                    <p>
+                        <input name="username" type="text" placeholder="<?=_('Username')?>" autocapitalize="none" autocomplete="off" spellcheck="false" autofocus required>
+                        <input name="password" type="password" placeholder="<?=_('Password')?>" required>
+                        <? if ($twoFactorRequired && !empty($token)) { ?>
+                        <input name="token" type="hidden" value="<?= $token ?>">
+                        <? } ?>
+                    </p>
+                    <? if ($error) echo "<p class='error'>$error</p>"; ?>
+                    <p>
+                        <button type="submit" class="button button--small"><?=_('Login')?></button>
+                    </p>
+                <? } else { ?>
+                    <? if ($error) { ?>
+                        <div><p class="error" style="padding-top:10px;"><?= $error ?></p></div>
+                    <? } else { ?>
+                        <div><p class="error" style="padding-top:10px;" title="<?= _('Please access this server via the My Servers Dashboard') ?>"><?= _('No 2FA token detected') ?></p></div>
+                    <? } ?>
+                    <div>
                         <a href="https://forums.unraid.net/my-servers/" class="button button--small" title="<?=_('Go to My Servers Dashboard')?>"><?=_('Go to My Servers Dashboard')?></a>
                     </div>
                 <? } ?>
-            </div>
+                <script type="text/javascript">
+                    document.cookie = "cookietest=1";
+                    cookieEnabled = document.cookie.indexOf("cookietest=")!=-1;
+                    document.cookie = "cookietest=1; expires=Thu, 01-Jan-1970 00:00:01 GMT";
+                    if (!cookieEnabled) {
+                        const errorElement = document.createElement('p');
+                        errorElement.classList.add('error');
+                        errorElement.textContent = "<?=_('Please enable cookies to use the Unraid webGUI')?>";
+                        document.body.textContent = '';
+                        document.body.appendChild(errorElement);
+                    }
+                </script>
+            </form>
 
             <? if (($twoFactorRequired && !empty($token)) || !$twoFactorRequired) { ?>
-                <p class="js-removeTimeout"><a href="https://docs.unraid.net/go/lost-root-password/" target="_blank"><?=_('Password recovery')?></a></p>
+                <div class="js-addTimeout hidden">
+                    <p class="error" style="padding-top:10px;"><?=_('Transparent 2FA Token timed out')?></p>
+                    <a href="https://forums.unraid.net/my-servers/" class="button button--small" title="<?=_('Go to My Servers Dashboard')?>"><?=_('Go to My Servers Dashboard')?></a>
+                </div>
             <? } ?>
-
         </div>
+
+        <? if (($twoFactorRequired && !empty($token)) || !$twoFactorRequired) { ?>
+            <p class="js-removeTimeout"><a href="https://docs.unraid.net/go/lost-root-password/" target="_blank"><?=_('Password recovery')?></a></p>
+        <? } ?>
     </section>
+
     <? if ($twoFactorRequired && !empty($token)) { ?>
         <script type="text/javascript">
             const $elsToRemove = document.querySelectorAll('.js-removeTimeout');
             const $elsToShow = document.querySelectorAll('.js-addTimeout');
-            /**
-             * A user can manually refresh the page or submit with the wrong username/password
-             * the t2fa token will be re-used on these page refreshes. We need to keep track of the timeout across potential page
-             * loads rather than setting the timer with a fresh timeout each page load
-             */
             const tokenName = '<?=$token?>'.slice(-20);
             const ts = Date.now();
             const timeoutStarted = sessionStorage.getItem(tokenName) ? Number(sessionStorage.getItem(tokenName)) : ts;
-            const timeoutDiff = ts - timeoutStarted; // current timestamp minus timestamp when token first set
-            const timeoutMS = 297000 - timeoutDiff; // 5 minutes minus 3seconds or (5*60)*1000ms - 3000ms = 297000
+            const timeoutDiff = ts - timeoutStarted;
+            const timeoutMS = 297000 - timeoutDiff;
             sessionStorage.setItem(tokenName, timeoutStarted);
             const tokenTimeout = setTimeout(() => {
-                $elsToRemove.forEach(z => z.remove()); // remove elements
-                $elsToShow.forEach(z => z.classList.remove('hidden')); // add elements
-            }, timeoutMS); // if timeoutMS is negative value the timeout will trigger immediately
+                $elsToRemove.forEach(z => z.remove());
+                $elsToShow.forEach(z => z.classList.remove('hidden'));
+            }, timeoutMS);
         </script>
     <? } ?>
+
+    <script>
+    (function () {
+        const canvas = document.getElementById('matrix-canvas');
+        const ctx    = canvas.getContext('2d');
+
+        // Extended katakana half-width + latin + symbols
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789' +
+                      'ｦｧｨｩｪｫｬｭｮｯｰｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝﾞﾟ' +
+                      '@#$%&:<>/\\|{}[]';
+
+        const fontSize = 16;
+        let columns, drops;
+
+        function init() {
+            canvas.width  = window.innerWidth;
+            canvas.height = window.innerHeight;
+            columns = Math.floor(canvas.width / fontSize);
+            // Stagger so columns don't all start at the same time
+            drops = Array.from({ length: columns }, () =>
+                Math.floor(Math.random() * -(canvas.height / fontSize))
+            );
+        }
+
+        function draw() {
+            // Semi-transparent fill creates the fading trail effect
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.font = `${fontSize}px monospace`;
+
+            for (let i = 0; i < drops.length; i++) {
+                const char = chars[Math.floor(Math.random() * chars.length)];
+                const x = i * fontSize;
+                const y = drops[i] * fontSize;
+
+                if (y >= 0 && y <= canvas.height) {
+                    // Bright near-white head — trail fades to green naturally via the fill overlay
+                    ctx.fillStyle = '#ccffcc';
+                    ctx.fillText(char, x, y);
+                }
+
+                if (y > canvas.height && Math.random() > 0.975) {
+                    drops[i] = Math.floor(Math.random() * -40);
+                }
+                drops[i]++;
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        init();
+        draw();
+        window.addEventListener('resize', init);
+    })();
+    </script>
 </body>
 </html>
