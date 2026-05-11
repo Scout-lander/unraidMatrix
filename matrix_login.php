@@ -92,7 +92,6 @@ function verifyUsernamePassword(string $username, string $password): bool {
 
 function verifyTwoFactorToken(string $username, string $token): bool {
     try {
-        // Create curl client
         $curlClient = curl_init();
         curl_setopt($curlClient, CURLOPT_HEADER, true);
         curl_setopt($curlClient, CURLOPT_RETURNTRANSFER, true);
@@ -106,110 +105,81 @@ function verifyTwoFactorToken(string $username, string $token): bool {
             'token' => $token
         ]));
 
-        // Send the request
         curl_exec($curlClient);
-
-        // Get the http status code
         $httpCode = curl_getinfo($curlClient, CURLINFO_HTTP_CODE);
-
-        // Close the connection
         curl_close($curlClient);
 
-        // Error
-        // This should accept 200 or 204 status codes
         if ($httpCode !== 200 && $httpCode !== 204) {
-            // Log error to syslog
             exec("logger -t webGUI ".escapeshellarg("2FA code for {$username} is invalid, blocking access!"));
             return false;
         }
 
-        // Log success to syslog
         exec("logger -t webGUI ".escapeshellarg("2FA code for {$username} is valid, allowing login!"));
-
-        // Success
         return true;
     } catch (Exception $exception) {
-        // Error
         return false;
     }
 }
 
-// Check if a haystack ends in a needle
 function endsWith($haystack, $needle): bool {
     return substr_compare($haystack, $needle, -strlen($needle)) === 0;
 }
 
-// Check if we're accessing this via a wildcard cert
 function isWildcardCert(): bool {
     global $server_name;
     return endsWith($server_name, '.myunraid.net');
 }
 
-// Check if we're accessing this locally via the expected myunraid.net url
 function isLocalAccess(): bool {
     global $nginx, $server_name;
     return isWildcardCert() && $nginx['NGINX_LANFQDN'] === $server_name;
 }
 
-// Check if we're accessing this remotely via the expected myunraid.net url
 function isRemoteAccess(): bool {
     global $nginx, $server_name;
     return isWildcardCert() && $nginx['NGINX_WANFQDN'] === $server_name;
 }
 
-// Check if 2fa is enabled for local (requires USE_SSL to be "auto" so no alternate urls can access the server)
 function isLocalTwoFactorEnabled(): bool {
     global $nginx, $my_servers;
     return $nginx['NGINX_USESSL'] === "auto" && ($my_servers['local']['2Fa']??'') === 'yes';
 }
 
-// Check if 2fa is enabled for remote
 function isRemoteTwoFactorEnabled(): bool {
     global $my_servers;
     return ($my_servers['remote']['2Fa']??'') === 'yes';
 }
 
-// Load configs into memory
 $my_servers = @parse_ini_file('/boot/config/plugins/dynamix.my.servers/myservers.cfg', true);
 $nginx = @parse_ini_file('/var/local/emhttp/nginx.ini');
 
-// Vars
 $maxFails = 3;
-$cooldown = 15 * 60; // 15 mins
+$cooldown = 15 * 60;
 $remote_addr = $_SERVER['REMOTE_ADDR'] ?? "unknown";
 $failFile = "/var/log/pwfail/{$remote_addr}";
 
-// Get the credentials
 $username = $_POST['username']??'';
 $password = $_POST['password']??'';
 $token = $_REQUEST['token']??'';
 
-// Check if we need 2fa
 $twoFactorRequired = (isLocalAccess() && isLocalTwoFactorEnabled()) || (isRemoteAccess() && isRemoteTwoFactorEnabled());
 
-// If we have a username + password combo attempt to login
 if (!empty($username) && !empty($password)) {
     try {
-        // Bail if we're missing the 2FA token and we expect one
         if (isWildcardCert() && $twoFactorRequired && empty($token)) throw new Exception(_('No 2FA token detected'));
 
-        // Read existing fails, cleanup expired ones
         $time = time();
         $failCount = cleanupFails($failFile, $time);
 
-        // Check if we're limited
         if ($failCount >= $maxFails) {
             if ($failCount == $maxFails) exec("logger -t webGUI ".escapeshellarg("Ignoring login attempts for {$username} from {$remote_addr}"));
             throw new Exception(_('Too many invalid login attempts'));
         }
 
-        // Bail if username + password combo doesn't work
         if (!verifyUsernamePassword($username, $password)) throw new Exception(_('Invalid username or password'));
 
-        // Bail if we need a token but it's invalid
         if (isWildcardCert() && $twoFactorRequired && !verifyTwoFactorToken($username, $token)) throw new Exception(_('Invalid 2FA token'));
 
-        // Successful login, start session
         @unlink($failFile);
         if (session_status()==PHP_SESSION_NONE) session_start();
         $_SESSION['unraid_login'] = time();
@@ -218,14 +188,10 @@ if (!empty($username) && !empty($password)) {
         session_write_close();
         exec("logger -t webGUI ".escapeshellarg("Successful login user {$username} from {$remote_addr}"));
 
-        // Redirect the user to the start page
         header("Location: /".$start_page);
         exit;
     } catch (Exception $exception) {
-        // Set error message
         $error = $exception->getMessage();
-
-        // Log error to syslog
         exec("logger -t webGUI ".escapeshellarg("Unsuccessful login user {$username} from {$remote_addr}"));
         appendToFile($failFile, $time."\n");
     }
@@ -238,7 +204,6 @@ $myCase = file_exists("$boot/$myFile") ? file_get_contents("$boot/$myFile") : fa
 extract(parse_plugin_cfg('dynamix', true));
 $theme_dark = in_array($display['theme'], ['black', 'gray']);
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -281,22 +246,20 @@ $theme_dark = in_array($display['theme'], ['black', 'gray']);
     /* ── Matrix canvas ── */
     #matrix-canvas {
         position: fixed;
-        top: 0; left: 0;
+        inset: 0;
         width: 100%; height: 100%;
         z-index: 0;
         pointer-events: none;
     }
 
-    /* ── CRT scanlines — static horizontal lines ── */
+    /* ── CRT scanlines ── */
     .scanlines {
         position: fixed;
         inset: 0;
         background: repeating-linear-gradient(
             to bottom,
-            transparent 0px,
-            transparent 2px,
-            rgba(0, 0, 0, 0.15) 2px,
-            rgba(0, 0, 0, 0.15) 4px
+            transparent 0px, transparent 2px,
+            rgba(0, 0, 0, 0.13) 2px, rgba(0, 0, 0, 0.13) 4px
         );
         pointer-events: none;
         z-index: 5;
@@ -306,11 +269,8 @@ $theme_dark = in_array($display['theme'], ['black', 'gray']);
     .crt-glow {
         position: fixed;
         inset: 0;
-        background: radial-gradient(ellipse at center,
-            rgba(0, 255, 65, 0.04) 0%,
-            rgba(0, 0, 0, 0.5) 80%
-        );
-        box-shadow: inset 0 0 80px rgba(0, 255, 65, 0.12);
+        background: radial-gradient(ellipse at center, rgba(0,255,65,0.04) 0%, rgba(0,0,0,0.5) 80%);
+        box-shadow: inset 0 0 80px rgba(0,255,65,0.1);
         pointer-events: none;
         z-index: 6;
     }
@@ -319,125 +279,255 @@ $theme_dark = in_array($display['theme'], ['black', 'gray']);
     .vignette {
         position: fixed;
         inset: 0;
-        background: radial-gradient(ellipse at center,
-            transparent 45%,
-            rgba(0, 0, 0, 0.75) 100%
-        );
+        background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.8) 100%);
         pointer-events: none;
         z-index: 6;
     }
 
     /* ── Login box ── */
+    @keyframes borderPulse {
+        0%, 100% { box-shadow: 0 0 18px rgba(0,255,65,0.3), inset 0 0 18px rgba(0,255,65,0.02); }
+        50%       { box-shadow: 0 0 38px rgba(0,255,65,0.55), inset 0 0 28px rgba(0,255,65,0.05); }
+    }
+
     #login {
         position: relative;
         z-index: 10;
-        background: rgba(0, 0, 0, 0.85);
-        border: 1px solid #00ff41;
-        border-radius: 10px;
-        box-shadow: 0 0 24px rgba(0, 255, 65, 0.35), inset 0 0 30px rgba(0, 255, 65, 0.03);
-        padding: 2.5rem 2rem 2rem;
-        width: 360px;
+        background: rgba(0, 4, 0, 0.92);
+        border: 1px solid rgba(0, 255, 65, 0.6);
+        border-radius: 8px;
+        width: 380px;
         display: flex;
         flex-direction: column;
+        animation: borderPulse 4s ease-in-out infinite;
+        overflow: hidden;
+    }
+
+    /* ── Terminal chrome header ── */
+    .term-header {
+        display: flex;
         align-items: center;
+        gap: 0.5rem;
+        padding: 0.55rem 0.9rem;
+        background: rgba(0, 255, 65, 0.06);
+        border-bottom: 1px solid rgba(0, 255, 65, 0.15);
+        user-select: none;
     }
 
-    h1 {
-        font-size: 1.8rem;
-        font-weight: bold;
-        text-align: center;
-        color: #00ff41;
-        text-shadow: 0 0 6px #00ff41, 0 0 18px #00ff41, 0 0 36px #00a328;
-        margin: 0 0 0.25rem;
-        letter-spacing: 0.04em;
+    .term-dots {
+        display: flex;
+        gap: 5px;
     }
 
-    h2 {
-        font-size: 0.78rem;
-        font-weight: normal;
-        text-align: center;
-        color: rgba(0, 255, 65, 0.45);
-        margin: 0 0 1.5rem;
-        letter-spacing: 0.16em;
+    .term-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        border: 1px solid rgba(0, 255, 65, 0.4);
+        background: rgba(0, 255, 65, 0.15);
+    }
+
+    .term-dot:first-child { background: rgba(0, 255, 65, 0.5); border-color: rgba(0,255,65,0.7); }
+
+    .term-title {
+        margin-left: auto;
+        font-size: 0.6rem;
+        letter-spacing: 0.18em;
+        color: rgba(0, 255, 65, 0.35);
         text-transform: uppercase;
     }
 
-    .form {
-        width: 100%;
+    /* ── Login body ── */
+    .login-body {
+        padding: 1.75rem 1.75rem 1.5rem;
         display: flex;
         flex-direction: column;
+        align-items: center;
+        gap: 0;
     }
 
-    input[type="text"],
-    input[type="password"] {
-        width: 100%;
-        background: rgba(0, 8, 0, 0.75);
+    h1 {
+        font-size: 1.65rem;
+        font-weight: bold;
+        text-align: center;
         color: #00ff41;
-        border: 1px solid rgba(0, 255, 65, 0.35);
-        border-radius: 5px;
-        padding: 0.65rem 0.9rem;
-        margin-bottom: 0.85rem;
-        font-size: 0.95rem;
-        font-family: 'Courier New', monospace;
+        text-shadow: 0 0 8px #00ff41, 0 0 20px #00ff41, 0 0 40px #007a1f;
+        margin: 0 0 0.2rem;
+        letter-spacing: 0.06em;
+    }
+
+    .subtitle {
+        font-size: 0.68rem;
+        color: rgba(0, 255, 65, 0.4);
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        margin-bottom: 1.6rem;
+        min-height: 1em;
+    }
+
+    .subtitle-cursor {
+        display: inline-block;
+        width: 7px;
+        height: 0.75em;
+        background: rgba(0, 255, 65, 0.6);
+        margin-left: 1px;
+        vertical-align: middle;
+        animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0; }
+    }
+
+    /* ── Form ── */
+    .form { width: 100%; display: flex; flex-direction: column; }
+
+    .field-label {
+        font-size: 0.6rem;
+        letter-spacing: 0.2em;
+        color: rgba(0, 255, 65, 0.4);
+        text-transform: uppercase;
+        margin-bottom: 0.35rem;
+    }
+
+    .input-row {
+        display: flex;
+        align-items: center;
+        background: rgba(0, 12, 0, 0.8);
+        border: 1px solid rgba(0, 255, 65, 0.25);
+        border-radius: 4px;
+        padding: 0 0.75rem;
+        margin-bottom: 1rem;
         transition: border-color 0.2s, box-shadow 0.2s;
     }
 
-    input[type="text"]:focus,
-    input[type="password"]:focus {
-        outline: none;
-        border-color: #00ff41;
-        box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+    .input-row:focus-within {
+        border-color: rgba(0, 255, 65, 0.8);
+        box-shadow: 0 0 12px rgba(0, 255, 65, 0.2);
     }
 
-    input[type="text"]::placeholder,
-    input[type="password"]::placeholder {
-        color: rgba(0, 255, 65, 0.28);
+    .input-prompt {
+        color: rgba(0, 255, 65, 0.5);
+        font-size: 0.9rem;
+        padding-right: 0.5rem;
+        user-select: none;
+        flex-shrink: 0;
     }
+
+    .input-row input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: #00ff41;
+        font-family: 'Courier New', monospace;
+        font-size: 0.92rem;
+        padding: 0.6rem 0;
+        caret-color: #00ff41;
+    }
+
+    .input-row input::placeholder { color: rgba(0, 255, 65, 0.2); }
+
+    /* ── Button ── */
+    .btn-wrap { width: 100%; margin-top: 0.5rem; }
 
     .button, .button--small {
         width: 100%;
         background: transparent;
         color: #00ff41;
-        border: 1px solid #00ff41;
-        border-radius: 5px;
-        padding: 0.65rem 1rem;
-        font-size: 0.82rem;
+        border: 1px solid rgba(0, 255, 65, 0.6);
+        border-radius: 4px;
+        padding: 0.7rem 1rem;
+        font-size: 0.78rem;
         font-family: 'Courier New', monospace;
         font-weight: bold;
-        letter-spacing: 0.15em;
+        letter-spacing: 0.22em;
         text-transform: uppercase;
         text-align: center;
         text-decoration: none;
-        display: inline-block;
+        display: block;
         cursor: pointer;
-        transition: background 0.2s, color 0.2s, box-shadow 0.2s;
-        margin-top: 0.2rem;
+        transition: background 0.2s, color 0.2s, box-shadow 0.2s, border-color 0.2s;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .button::before, .button--small::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(0,255,65,0.08), transparent);
+        transform: translateX(-100%);
+        transition: transform 0.4s ease;
+    }
+
+    .button:hover::before, .button--small:hover::before {
+        transform: translateX(100%);
     }
 
     .button:hover, .button--small:hover {
-        background: #00ff41;
-        color: #000;
-        box-shadow: 0 0 16px rgba(0, 255, 65, 0.45);
+        background: rgba(0, 255, 65, 0.12);
+        border-color: #00ff41;
+        box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+        color: #00ff41;
     }
 
+    /* ── Error ── */
     .error {
         color: #ff4444;
-        text-align: center;
-        font-size: 0.82rem;
+        font-size: 0.78rem;
         margin-bottom: 0.75rem;
-        text-shadow: 0 0 6px rgba(255, 68, 68, 0.4);
+        padding: 0.5rem 0.75rem;
+        background: rgba(255, 68, 68, 0.07);
+        border: 1px solid rgba(255, 68, 68, 0.25);
+        border-radius: 4px;
+        text-align: center;
+        text-shadow: 0 0 8px rgba(255,68,68,0.4);
+        letter-spacing: 0.04em;
     }
 
-    a {
-        color: rgba(0, 255, 65, 0.45);
+    /* ── Status bar ── */
+    .status-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 1.25rem;
+        padding-top: 0.85rem;
+        border-top: 1px solid rgba(0, 255, 65, 0.1);
+        font-size: 0.58rem;
+        color: rgba(0, 255, 65, 0.28);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        width: 100%;
+    }
+
+    .status-led {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #00ff41;
+        flex-shrink: 0;
+        animation: ledBlink 2.5s ease-in-out infinite;
+    }
+
+    @keyframes ledBlink {
+        0%, 85%, 100% { opacity: 1; box-shadow: 0 0 4px #00ff41; }
+        90%            { opacity: 0.2; box-shadow: none; }
+    }
+
+    /* ── Recovery link ── */
+    .recovery {
+        display: block;
+        text-align: center;
+        margin-top: 0.9rem;
+        font-size: 0.65rem;
+        color: rgba(0, 255, 65, 0.28);
         text-decoration: none;
-        font-size: 0.75rem;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.06em;
         transition: color 0.2s;
     }
-    a:hover { color: #00ff41; }
-
-    .js-removeTimeout a { display: block; text-align: center; margin-top: 1.25rem; }
+    .recovery:hover { color: rgba(0, 255, 65, 0.7); }
 
     .hidden { display: none; }
 
@@ -454,8 +544,9 @@ $theme_dark = in_array($display['theme'], ['black', 'gray']);
     }
 
     @media (max-width: 500px) {
-        #login { width: 90%; padding: 1.75rem 1.25rem; }
-        h1 { font-size: 1.4rem; }
+        #login { width: 92%; }
+        .login-body { padding: 1.5rem 1.25rem 1.25rem; }
+        h1 { font-size: 1.35rem; }
     }
     </style>
     <link type="text/css" rel="stylesheet" href="<?autov("/webGui/styles/default-cases.css")?>">
@@ -469,71 +560,104 @@ $theme_dark = in_array($display['theme'], ['black', 'gray']);
     <div class="vignette"></div>
 
     <section id="login">
-        <h1><?=htmlspecialchars($var['NAME'])?></h1>
-        <h2>Access Terminal</h2>
 
-        <div class="form">
-            <form class="js-removeTimeout" action="/login" method="POST">
-                <? if (($twoFactorRequired && !empty($token)) || !$twoFactorRequired) { ?>
-                    <p>
-                        <input name="username" type="text" placeholder="<?=_('Username')?>" autocapitalize="none" autocomplete="off" spellcheck="false" autofocus required>
-                        <input name="password" type="password" placeholder="<?=_('Password')?>" required>
+        <!-- Terminal chrome bar -->
+        <div class="term-header">
+            <div class="term-dots">
+                <div class="term-dot"></div>
+                <div class="term-dot"></div>
+                <div class="term-dot"></div>
+            </div>
+            <span class="term-title">matrix terminal &mdash; ssh session</span>
+        </div>
+
+        <div class="login-body">
+            <h1><?=htmlspecialchars($var['NAME'])?></h1>
+            <div class="subtitle" id="subtitle"><span class="subtitle-cursor"></span></div>
+
+            <div class="form">
+                <form class="js-removeTimeout" action="/login" method="POST">
+                    <? if (($twoFactorRequired && !empty($token)) || !$twoFactorRequired) { ?>
+
+                        <? if ($error) echo "<div class='error'>$error</div>"; ?>
+
+                        <div class="field-label">Username</div>
+                        <div class="input-row">
+                            <span class="input-prompt">&#62;_</span>
+                            <input name="username" type="text" placeholder="<?=_('Username')?>" autocapitalize="none" autocomplete="off" spellcheck="false" autofocus required>
+                        </div>
+
+                        <div class="field-label">Password</div>
+                        <div class="input-row">
+                            <span class="input-prompt">&#62;_</span>
+                            <input name="password" type="password" placeholder="<?=_('Password')?>" required>
+                        </div>
+
                         <? if ($twoFactorRequired && !empty($token)) { ?>
-                        <input name="token" type="hidden" value="<?= $token ?>">
+                            <input name="token" type="hidden" value="<?= $token ?>">
                         <? } ?>
-                    </p>
-                    <? if ($error) echo "<p class='error'>$error</p>"; ?>
-                    <p>
-                        <button type="submit" class="button button--small"><?=_('Login')?></button>
-                    </p>
-                <? } else { ?>
-                    <? if ($error) { ?>
-                        <div><p class="error" style="padding-top:10px;"><?= $error ?></p></div>
+
+                        <div class="btn-wrap">
+                            <button type="submit" class="button button--small"><?=_('Login')?></button>
+                        </div>
+
                     <? } else { ?>
-                        <div><p class="error" style="padding-top:10px;" title="<?= _('Please access this server via the My Servers Dashboard') ?>"><?= _('No 2FA token detected') ?></p></div>
+
+                        <? if ($error) { ?>
+                            <div class="error"><?= $error ?></div>
+                        <? } else { ?>
+                            <div class="error" title="<?= _('Please access this server via the My Servers Dashboard') ?>"><?= _('No 2FA token detected') ?></div>
+                        <? } ?>
+                        <a href="https://forums.unraid.net/my-servers/" class="button button--small" title="<?=_('Go to My Servers Dashboard')?>"><?=_('Go to My Servers Dashboard')?></a>
+
                     <? } ?>
-                    <div>
+
+                    <script type="text/javascript">
+                        document.cookie = "cookietest=1";
+                        cookieEnabled = document.cookie.indexOf("cookietest=") != -1;
+                        document.cookie = "cookietest=1; expires=Thu, 01-Jan-1970 00:00:01 GMT";
+                        if (!cookieEnabled) {
+                            const e = document.createElement('div');
+                            e.className = 'error';
+                            e.textContent = "<?=_('Please enable cookies to use the Unraid webGUI')?>";
+                            document.body.textContent = '';
+                            document.body.appendChild(e);
+                        }
+                    </script>
+                </form>
+
+                <? if (($twoFactorRequired && !empty($token)) || !$twoFactorRequired) { ?>
+                    <div class="js-addTimeout hidden">
+                        <div class="error" style="margin-top:0.75rem;"><?=_('Transparent 2FA Token timed out')?></div>
                         <a href="https://forums.unraid.net/my-servers/" class="button button--small" title="<?=_('Go to My Servers Dashboard')?>"><?=_('Go to My Servers Dashboard')?></a>
                     </div>
                 <? } ?>
-                <script type="text/javascript">
-                    document.cookie = "cookietest=1";
-                    cookieEnabled = document.cookie.indexOf("cookietest=")!=-1;
-                    document.cookie = "cookietest=1; expires=Thu, 01-Jan-1970 00:00:01 GMT";
-                    if (!cookieEnabled) {
-                        const errorElement = document.createElement('p');
-                        errorElement.classList.add('error');
-                        errorElement.textContent = "<?=_('Please enable cookies to use the Unraid webGUI')?>";
-                        document.body.textContent = '';
-                        document.body.appendChild(errorElement);
-                    }
-                </script>
-            </form>
+
+                <!-- Status bar -->
+                <div class="status-bar">
+                    <div class="status-led"></div>
+                    <span>Encrypted connection established</span>
+                </div>
+            </div>
 
             <? if (($twoFactorRequired && !empty($token)) || !$twoFactorRequired) { ?>
-                <div class="js-addTimeout hidden">
-                    <p class="error" style="padding-top:10px;"><?=_('Transparent 2FA Token timed out')?></p>
-                    <a href="https://forums.unraid.net/my-servers/" class="button button--small" title="<?=_('Go to My Servers Dashboard')?>"><?=_('Go to My Servers Dashboard')?></a>
-                </div>
+                <a href="https://docs.unraid.net/go/lost-root-password/" target="_blank" class="recovery js-removeTimeout"><?=_('Password recovery')?></a>
             <? } ?>
         </div>
 
-        <? if (($twoFactorRequired && !empty($token)) || !$twoFactorRequired) { ?>
-            <p class="js-removeTimeout"><a href="https://docs.unraid.net/go/lost-root-password/" target="_blank"><?=_('Password recovery')?></a></p>
-        <? } ?>
     </section>
 
     <? if ($twoFactorRequired && !empty($token)) { ?>
         <script type="text/javascript">
             const $elsToRemove = document.querySelectorAll('.js-removeTimeout');
-            const $elsToShow = document.querySelectorAll('.js-addTimeout');
+            const $elsToShow   = document.querySelectorAll('.js-addTimeout');
             const tokenName = '<?=$token?>'.slice(-20);
             const ts = Date.now();
             const timeoutStarted = sessionStorage.getItem(tokenName) ? Number(sessionStorage.getItem(tokenName)) : ts;
             const timeoutDiff = ts - timeoutStarted;
             const timeoutMS = 297000 - timeoutDiff;
             sessionStorage.setItem(tokenName, timeoutStarted);
-            const tokenTimeout = setTimeout(() => {
+            setTimeout(() => {
                 $elsToRemove.forEach(z => z.remove());
                 $elsToShow.forEach(z => z.classList.remove('hidden'));
             }, timeoutMS);
@@ -542,10 +666,10 @@ $theme_dark = in_array($display['theme'], ['black', 'gray']);
 
     <script>
     (function () {
+        // ── Matrix rain ──────────────────────────────────────────────────────
         const canvas = document.getElementById('matrix-canvas');
         const ctx    = canvas.getContext('2d');
 
-        // Extended katakana half-width + latin + symbols
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789' +
                       'ｦｧｨｩｪｫｬｭｮｯｰｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝﾞﾟ' +
                       '@#$%&:<>/\\|{}[]';
@@ -557,42 +681,64 @@ $theme_dark = in_array($display['theme'], ['black', 'gray']);
             canvas.width  = window.innerWidth;
             canvas.height = window.innerHeight;
             columns = Math.floor(canvas.width / fontSize);
-            // Stagger so columns don't all start at the same time
             drops = Array.from({ length: columns }, () =>
                 Math.floor(Math.random() * -(canvas.height / fontSize))
             );
         }
 
+        function randChar() { return chars[Math.floor(Math.random() * chars.length)]; }
+
         function draw() {
-            // Semi-transparent fill creates the fading trail effect
             ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-
             ctx.font = `${fontSize}px monospace`;
 
             for (let i = 0; i < drops.length; i++) {
-                const char = chars[Math.floor(Math.random() * chars.length)];
                 const x = i * fontSize;
-                const y = drops[i] * fontSize;
+                const head = drops[i];
+                const headY = head * fontSize;
 
-                if (y >= 0 && y <= canvas.height) {
-                    // Bright near-white head — trail fades to green naturally via the fill overlay
-                    ctx.fillStyle = '#ccffcc';
-                    ctx.fillText(char, x, y);
+                // Bright white head character
+                if (headY >= 0 && headY <= canvas.height) {
+                    ctx.fillStyle = '#eefff0';
+                    ctx.fillText(randChar(), x, headY);
                 }
 
-                if (y > canvas.height && Math.random() > 0.975) {
+                // Two medium-green chars just behind the head
+                for (let t = 1; t <= 2; t++) {
+                    const ty = (head - t) * fontSize;
+                    if (ty >= 0 && ty <= canvas.height) {
+                        ctx.fillStyle = `rgba(0,255,65,${0.6 - t * 0.18})`;
+                        ctx.fillText(randChar(), x, ty);
+                    }
+                }
+
+                if (headY > canvas.height && Math.random() > 0.975)
                     drops[i] = Math.floor(Math.random() * -40);
-                }
                 drops[i]++;
             }
-
             requestAnimationFrame(draw);
         }
 
         init();
         draw();
         window.addEventListener('resize', init);
+
+        // ── Typewriter subtitle ───────────────────────────────────────────────
+        const subtitleEl = document.getElementById('subtitle');
+        const subtitleText = 'Access Terminal';
+        let charIndex = 0;
+
+        function typeWriter() {
+            if (charIndex < subtitleText.length) {
+                const cursor = subtitleEl.querySelector('.subtitle-cursor');
+                subtitleEl.insertBefore(document.createTextNode(subtitleText[charIndex]), cursor);
+                charIndex++;
+                setTimeout(typeWriter, 75 + Math.random() * 40);
+            }
+        }
+
+        setTimeout(typeWriter, 600);
     })();
     </script>
 </body>
